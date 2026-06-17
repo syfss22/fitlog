@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>FitLog 健身记录</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://unpkg.com/vue-router@4/dist/vue-router.global.prod.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg-primary: #1a1a2e;
+      --bg-secondary: #16213e;
+      --bg-card: #0f3460;
+      --accent: #e94560;
+      --accent-light: #ff6b81;
+      --success: #2ecc71;
+      --danger: #e74c3c;
+      --text-primary: #ffffff;
+      --text-secondary: #a0a0b8;
+      --text-muted: #6c6c80;
+      --border: #2a2a4a;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    #app { min-height: 100vh; }
+
+    .nav-bar {
+      position: sticky; top: 0; z-index: 100;
+      background: var(--bg-secondary);
+      padding: 12px 16px;
+      display: flex; align-items: center; gap: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-bar .back-btn {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: rgba(255,255,255,0.08);
+      border: none; color: var(--text-primary);
+      font-size: 16px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .nav-bar .back-btn:active { background: rgba(255,255,255,0.15); }
+    .nav-bar .nav-title { font-size: 18px; font-weight: 600; flex:1; }
+    .nav-bar .nav-action {
+      background: none; border: none; color: var(--accent);
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      display: flex; align-items: center; gap: 4px;
+    }
+
+    .page { padding: 16px; padding-bottom: 100px; }
+
+    .home-page {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      min-height: 100vh; padding: 24px; text-align: center;
+    }
+    .home-logo {
+      width: 100px; height: 100px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-light));
+      border-radius: 28px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 48px; margin-bottom: 24px;
+      box-shadow: 0 8px 32px rgba(233,69,96,0.3);
+    }
+    .home-title {
+      font-size: 28px; font-weight: 700; margin-bottom: 8px;
+      background: linear-gradient(135deg, #fff, #c0c0d8);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .home-subtitle { font-size: 16px; color: var(--text-secondary); margin-bottom: 48px; }
+    .home-enter-btn {
+      width: 100%; max-width: 300px; padding: 18px 32px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-light));
+      border: none; border-radius: 16px;
+      color: white; font-size: 20px; font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 6px 24px rgba(233,69,96,0.4);
+    }
+    .home-enter-btn:active { transform: scale(0.97); }
+    .home-shortcuts { margin-top: 32px; display: flex; gap: 12px; }
+    .home-shortcut-btn {
+      padding: 10px 20px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border); border-radius: 12px;
+      color: var(--text-secondary); font-size: 14px; cursor: pointer;
+    }
+
+    .entry-page {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      min-height: 100vh; padding: 24px;
+    }
+    .entry-title { font-size: 24px; font-weight: 700; margin-bottom: 40px; }
+    .entry-cards { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 16px; }
+    .entry-card {
+      background: var(--bg-card); border-radius: 20px;
+      padding: 28px 24px; cursor: pointer;
+      display: flex; align-items: center; gap: 16px;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    .entry-card:active { transform: scale(0.98); }
+    .entry-card-icon {
+      width: 56px; height: 56px; border-radius: 16px;
+      display: flex; align-items: center; justify-content: center; font-size: 24px;
+    }
+    .entry-card-icon.new { background: linear-gradient(135deg, #e94560, #ff6b81); }
+    .entry-card-icon.pending { background: linear-gradient(135deg, #0f3460, #1a5276); }
+    .entry-card-icon.stats { background: linear-gradient(135deg, #2ecc71, #27ae60); }
+    .entry-card-text h3 { font-size: 18px; margin-bottom: 4px; }
+    .entry-card-text p { font-size: 13px; color: var(--text-secondary); }
+
+    .card {
+      background: var(--bg-card); border-radius: 16px;
+      padding: 16px; margin-bottom: 12px;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .form-group { margin-bottom: 16px; }
+    .form-label {
+      display: block; font-size: 14px;
+      color: var(--text-secondary); margin-bottom: 8px; font-weight: 500;
+    }
+    .form-input {
+      width: 100%; padding: 12px 16px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border); border-radius: 12px;
+      color: var(--text-primary); font-size: 16px;
+      outline: none; transition: border-color 0.2s;
+    }
+    .form-input:focus { border-color: var(--accent); }
+    .form-input::placeholder { color: var(--text-muted); }
+    input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
+    select.form-input {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23a0a0b8' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px;
+    }
+
+    .btn {
+      padding: 12px 24px; border: none; border-radius: 12px;
+      font-size: 16px; font-weight: 600; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-light));
+      color: white; box-shadow: 0 4px 16px rgba(233,69,96,0.3);
+    }
+    .btn-secondary { background: rgba(255,255,255,0.08); color: var(--text-primary); }
+    .btn-success {
+      background: linear-gradient(135deg, #2ecc71, #27ae60);
+      color: white; box-shadow: 0 4px 16px rgba(46,204,113,0.3);
+    }
+    .btn-block { width: 100%; }
+    .btn-sm { padding: 8px 16px; font-size: 14px; border-radius: 8px; }
+    .btn-disabled { opacity: 0.4; pointer-events: none; }
+
+    .exercise-item {
+      background: rgba(255,255,255,0.04); border-radius: 12px;
+      padding: 14px 16px; margin-bottom: 10px;
+      display: flex; align-items: center; justify-content: space-between;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    .exercise-item.done { background: rgba(46,204,113,0.1); border-color: rgba(46,204,113,0.2); }
+    .exercise-item.skipped { background: rgba(231,76,60,0.1); border-color: rgba(231,76,60,0.2); }
+    .exercise-info { flex: 1; }
+    .exercise-name { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+    .exercise-detail { font-size: 13px; color: var(--text-secondary); }
+    .exercise-actions { display: flex; gap: 8px; }
+    .exercise-btn {
+      width: 40px; height: 40px; border-radius: 50%; border: 2px solid;
+      font-size: 18px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      background: transparent;
+    }
+    .btn-check { border-color: var(--success); color: var(--success); }
+    .btn-check.active { background: var(--success); color: white; }
+    .btn-cross { border-color: var(--danger); color: var(--danger); }
+    .btn-cross.active { background: var(--danger); color: white; }
+
+    .delete-btn {
+      width: 28px; height: 28px; border-radius: 50%; border: none;
+      background: rgba(231,76,60,0.15); color: var(--danger); font-size: 12px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+
+    .timer-bar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--bg-secondary); padding: 12px 16px;
+      display: flex; gap: 10px;
+      border-top: 1px solid var(--border); z-index: 50;
+    }
+    .timer-btn {
+      flex: 1; padding: 14px 8px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 12px; color: var(--text-primary);
+      font-size: 14px; font-weight: 600; cursor: pointer; text-align: center;
+    }
+    .timer-btn:active { background: var(--accent); border-color: var(--accent); }
+    .timer-btn i { display: block; font-size: 20px; margin-bottom: 4px; }
+
+    .timer-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 200;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    .timer-circle { position: relative; width: 240px; height: 240px; margin-bottom: 32px; }
+    .timer-circle svg { transform: rotate(-90deg); }
+    .timer-circle .bg-ring { fill: none; stroke: rgba(255,255,255,0.08); stroke-width: 8; }
+    .timer-circle .progress-ring { fill: none; stroke: var(--accent); stroke-width: 8; stroke-linecap: round; }
+    .timer-number {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 64px; font-weight: 700; font-variant-numeric: tabular-nums;
+    }
+    .timer-label { font-size: 18px; color: var(--text-secondary); margin-bottom: 40px; }
+    .timer-cancel-btn {
+      padding: 12px 32px; background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15); border-radius: 12px;
+      color: var(--text-secondary); font-size: 16px; cursor: pointer;
+    }
+
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 300;
+      display: flex; align-items: center; justify-content: center; padding: 24px;
+    }
+    .modal-box {
+      background: var(--bg-secondary); border-radius: 20px;
+      padding: 32px 24px; text-align: center;
+      width: 100%; max-width: 320px; border: 1px solid var(--border);
+      animation: modalIn 0.25s ease;
+    }
+    @keyframes modalIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .modal-icon {
+      width: 64px; height: 64px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-light));
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px; margin: 0 auto 16px;
+    }
+    .modal-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .modal-desc { font-size: 14px; color: var(--text-secondary); margin-bottom: 24px; }
+
+    .plan-card {
+      background: var(--bg-card); border-radius: 16px;
+      padding: 18px 16px; margin-bottom: 12px;
+      border: 1px solid rgba(255,255,255,0.05);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .plan-card-left { flex: 1; cursor: pointer; }
+    .plan-card-left:active { opacity: 0.7; }
+    .plan-card-date { font-size: 17px; font-weight: 600; margin-bottom: 4px; }
+    .plan-card-count { font-size: 13px; color: var(--text-secondary); }
+    .plan-card-arrow { color: var(--text-muted); font-size: 14px; margin-left: 6px; }
+    .plan-card-right { display: flex; align-items: center; gap: 4px; }
+    .plan-card-icon-btn {
+      width: 32px; height: 32px; border-radius: 50%; border: none;
+      font-size: 13px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .plan-card-icon-btn.copy { background: rgba(46,204,113,0.12); color: var(--success); }
+    .plan-card-icon-btn.copy:active { background: rgba(46,204,113,0.25); }
+    .plan-card-icon-btn.del { background: rgba(231,76,60,0.12); color: var(--danger); }
+    .plan-card-icon-btn.del:active { background: rgba(231,76,60,0.25); }
+
+    .stats-date-range { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; }
+    .stats-date-range .form-input { flex: 1; }
+    .stats-date-range span { color: var(--text-muted); font-size: 14px; }
+    .stats-summary {
+      background: var(--bg-card); border-radius: 16px;
+      padding: 20px; margin-bottom: 16px;
+      display: flex; justify-content: space-around; text-align: center;
+    }
+    .stats-num { font-size: 28px; font-weight: 700; }
+    .stats-num.accent { color: var(--accent); }
+    .stats-num.green { color: var(--success); }
+    .stats-label { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+    .chart-container { background: var(--bg-card); border-radius: 16px; padding: 16px; margin-bottom: 16px; }
+    .stats-day-group { margin-bottom: 16px; }
+    .stats-day-header {
+      font-size: 14px; color: var(--accent); font-weight: 600;
+      margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--border);
+    }
+
+    .capture-area { background: var(--bg-primary); padding: 16px; }
+    .capture-header {
+      text-align: center; padding: 20px 0 16px;
+      border-bottom: 1px solid var(--border); margin-bottom: 16px;
+    }
+    .capture-header h2 { font-size: 20px; font-weight: 700; }
+    .capture-header p { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+
+    .empty-state { text-align: center; padding: 48px 24px; color: var(--text-muted); }
+    .empty-state i { font-size: 48px; margin-bottom: 16px; display: block; }
+    .empty-state p { font-size: 15px; }
+
+    .exercise-config { display: flex; gap: 8px; width: 100%; }
+    .exercise-config .form-input { flex: 1; }
+
+    .bottom-action {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      padding: 16px; background: var(--bg-secondary);
+      border-top: 1px solid var(--border); z-index: 50;
+    }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .fade-in { animation: fadeIn 0.25s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+    .badge-success { background: rgba(46,204,113,0.15); color: var(--success); }
+    .badge-danger { background: rgba(231,76,60,0.15); color: var(--danger); }
+    .badge-muted { background: rgba(255,255,255,0.06); color: var(--text-muted); }
+
+    .confirm-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 250;
+      display: flex; align-items: center; justify-content: center; padding: 24px;
+    }
+    .confirm-box {
+      background: var(--bg-secondary); border-radius: 20px;
+      padding: 28px 24px; text-align: center;
+      width: 100%; max-width: 300px; border: 1px solid var(--border);
+    }
+    .confirm-title { font-size: 17px; font-weight: 600; margin-bottom: 12px; }
+    .confirm-actions { display: flex; gap: 10px; margin-top: 20px; }
+    .confirm-actions .btn { flex: 1; }
+
+    /* 动作选择器 */
+    .exercise-selector { position: relative; }
+    .exercise-selector-input {
+      width: 100%; padding: 12px 16px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border); border-radius: 12px;
+      color: var(--text-primary); font-size: 16px;
+      outline: none; cursor: pointer;
+    }
+    .exercise-selector-input:focus { border-color: var(--accent); }
+    .exercise-selector-input::placeholder { color: var(--text-muted); }
+    .exercise-dropdown {
+      position: absolute; top: 100%; left: 0; right: 0;
+      background: var(--bg-secondary); border: 1px solid var(--border);
+      border-radius: 12px; margin-top: 4px;
+      max-height: 240px; overflow-y: auto; z-index: 60;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    .exercise-dropdown-item {
+      padding: 10px 16px; cursor: pointer;
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 15px; border-bottom: 1px solid rgba(255,255,255,0.03);
+    }
+    .exercise-dropdown-item:active { background: rgba(233,69,96,0.15); }
+    .exercise-dropdown-item .item-actions { display: flex; gap: 6px; }
+    .exercise-dropdown-item .item-action-btn {
+      width: 26px; height: 26px; border-radius: 6px; border: none;
+      font-size: 11px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,0.06); color: var(--text-secondary);
+    }
+    .exercise-dropdown-item .item-action-btn.del-btn { color: var(--danger); }
+    .exercise-dropdown-item .item-action-btn.edit-btn { color: var(--accent-light); }
+    .exercise-dropdown-add {
+      padding: 10px 16px; cursor: pointer;
+      color: var(--accent); font-size: 14px; font-weight: 600;
+      display: flex; align-items: center; gap: 6px;
+      border-top: 1px solid var(--border);
+    }
+    .exercise-dropdown-add:active { background: rgba(233,69,96,0.1); }
+
+    /* 复制计划弹窗 */
+    .copy-plan-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 250;
+      display: flex; align-items: center; justify-content: center; padding: 24px;
+    }
+    .copy-plan-box {
+      background: var(--bg-secondary); border-radius: 20px;
+      padding: 28px 24px; text-align: center;
+      width: 100%; max-width: 320px; border: 1px solid var(--border);
+    }
+    .copy-plan-box h3 { font-size: 17px; font-weight: 600; margin-bottom: 16px; }
+    .copy-plan-box .form-group { text-align: left; }
+    .copy-plan-actions { display: flex; gap: 10px; margin-top: 20px; }
+    .copy-plan-actions .btn { flex: 1; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <router-view></router-view>
+  </div>
+
+  <script>
+  const { createApp, ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } = Vue;
+  const { createRouter, createWebHashHistory } = VueRouter;
+
+  // ==================== 数据管理 ====================
+  const STORAGE_KEY = 'fitness_data';
+  const CUSTOM_EXERCISES_KEY = 'fitness_custom_exercises';
+  const DEFAULT_PRESETS = [
+    '俯卧撑', '深蹲', '卧推', '硬拉', '引体向上',
+    '平板支撑', '卷腹', '弓步蹲', '哑铃飞鸟', '杠铃划船',
+    '腿举', '臂弯举', '三头下压', '坐姿划船', '有氧跑步'
+  ];
+
+  function loadData() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch(e) {}
+    return { pendingPlans: [], history: [] };
+  }
+  function saveData(data) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  }
+
+  // 预设动作管理：预设可编辑可删除，自定义也可编辑可删除
+  function loadAllExercises() {
+    try {
+      const raw = localStorage.getItem(CUSTOM_EXERCISES_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch(e) {}
+    // 首次：返回默认预设
+    return DEFAULT_PRESETS.slice();
+  }
+  function saveAllExercises(list) {
+    localStorage.setItem(CUSTOM_EXERCISES_KEY, JSON.stringify(list));
+  }
+
+  function genId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2, 6);
+  }
+
+  // ==================== 首页 ====================
+  const HomePage = {
+    template: `
+      <div class="home-page fade-in">
+        <div class="home-logo"><i class="fas fa-dumbbell"></i></div>
+        <h1 class="home-title">FitLog</h1>
+        <p class="home-subtitle">今天练什么？</p>
+        <button class="home-enter-btn" @click="$router.push('/entry')">
+          <i class="fas fa-play"></i> 开始训练
+        </button>
+        <div class="home-shortcuts">
+          <button class="home-shortcut-btn" @click="$router.push('/stats')">
+            <i class="fas fa-chart-bar"></i> 统计
+          </button>
+        </div>
+      </div>
+    `
+  };
+
+  // ==================== 入口选择页 ====================
+  const EntryPage = {
+    template: `
+      <div class="entry-page fade-in">
+        <div class="nav-bar">
+          <button class="back-btn" @click="$router.push('/')"><i class="fas fa-arrow-left"></i></button>
+          <span class="nav-title">今天练什么</span>
+        </div>
+        <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; width:100%;">
+          <h2 class="entry-title">选择训练模式</h2>
+          <div class="entry-cards">
+            <div class="entry-card" @click="$router.push('/new')">
+              <div class="entry-card-icon new"><i class="fas fa-plus"></i></div>
+              <div class="entry-card-text"><h3>新健项目</h3><p>创建新的训练计划</p></div>
+            </div>
+            <div class="entry-card" @click="$router.push('/pending')">
+              <div class="entry-card-icon pending"><i class="fas fa-clipboard-list"></i></div>
+              <div class="entry-card-text"><h3>待健项目</h3><p>查看待执行的训练计划</p></div>
+            </div>
+            <div class="entry-card" @click="$router.push('/stats')">
+              <div class="entry-card-icon stats"><i class="fas fa-chart-line"></i></div>
+              <div class="entry-card-text"><h3>训练统计</h3><p>查看历史训练数据</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `
+  };
+
+  // ==================== 新健项目页 ====================
+  const NewPlanPage = {
+    template: `
+      <div class="fade-in">
+        <div class="nav-bar">
+          <button class="back-btn" @click="$router.push('/entry')"><i class="fas fa-arrow-left"></i></button>
+          <span class="nav-title">新健项目</span>
+        </div>
+        <div class="page">
+          <div class="card">
+            <div class="form-group">
+              <label class="form-label"><i class="fas fa-calendar-alt"></i> 训练日期</label>
+              <input type="date" class="form-input" v-model="form.date">
+            </div>
+          </div>
+
+          <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+              <label class="form-label" style="margin-bottom:0;"><i class="fas fa-list"></i> 训练组 ({{form.exercises.length}}/10)</label>
+              <button class="btn btn-sm btn-primary" @click="addExercise" :class="{'btn-disabled': form.exercises.length >= 10}">
+                <i class="fas fa-plus"></i> 添加
+              </button>
+            </div>
+
+            <div v-for="(ex, idx) in form.exercises" :key="idx" class="exercise-item" style="flex-direction:column; align-items:stretch; gap:10px;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:14px; font-weight:600; color:var(--accent);">训练 {{idx + 1}}</span>
+                <button class="delete-btn" @click="removeExercise(idx)"><i class="fas fa-trash"></i></button>
+              </div>
+              <!-- 动作选择器：可搜索、可编辑、可删除 -->
+              <div class="exercise-selector">
+                <input class="exercise-selector-input"
+                  v-model="ex.searchText"
+                  @focus="openDropdown(idx)"
+                  @input="onSearchInput(ex, idx)"
+                  @blur="onBlur(idx)"
+                  placeholder="搜索或输入动作名称">
+                <div v-if="ex.showDropdown" class="exercise-dropdown">
+                  <div v-for="(name, i) in getFilteredExercises(idx)" :key="i"
+                    class="exercise-dropdown-item"
+                    @mousedown.prevent="selectExercise(idx, name)">
+                    <span>{{name}}</span>
+                    <div class="item-actions">
+                      <button class="item-action-btn edit-btn" @mousedown.prevent.stop="startEditExercise(idx, name, $event)"><i class="fas fa-pen"></i></button>
+                      <button class="item-action-btn del-btn" @mousedown.prevent.stop="deleteExerciseOption(idx, name, $event)"><i class="fas fa-trash"></i></button>
+                    </div>
+                  </div>
+                  <div v-if="ex.searchText && !getFilteredExercises(idx).includes(ex.searchText)"
+                    class="exercise-dropdown-add"
+                    @mousedown.prevent="addCustomExercise(idx)">
+                    <i class="fas fa-plus"></i> 添加"{{ex.searchText}}"
+                  </div>
+                </div>
+              </div>
+              <div class="exercise-config">
+                <div style="flex:1;"><input type="number" class="form-input" v-model.number="ex.sets" placeholder="组数" min="1" max="99"></div>
+                <div style="flex:1;"><input type="number" class="form-input" v-model.number="ex.reps" placeholder="次数/时长" min="1" max="9999"></div>
+                <select class="form-input" v-model="ex.unit" style="flex:0.6;">
+                  <option value="次">次</option>
+                  <option value="秒">秒</option>
+                </select>
+              </div>
+            </div>
+
+            <div v-if="form.exercises.length === 0" class="empty-state" style="padding:24px;">
+              <i class="fas fa-dumbbell"></i>
+              <p>点击上方"添加"按钮添加训练组</p>
+            </div>
+          </div>
+
+          <div style="height:80px;"></div>
+          <div class="bottom-action">
+            <button class="btn btn-primary btn-block" @click="submitPlan" :class="{'btn-disabled': !canSubmit}">
+              <i class="fas fa-check"></i> 完成创建
+            </button>
+          </div>
+        </div>
+
+        <!-- 编辑动作名弹窗 -->
+        <div v-if="editModal.show" class="copy-plan-overlay" @click.self="editModal.show=false">
+          <div class="copy-plan-box">
+            <h3>编辑动作名称</h3>
+            <div class="form-group"><input class="form-input" v-model="editModal.newName" placeholder="输入新名称"></div>
+            <div class="copy-plan-actions">
+              <button class="btn btn-secondary" @click="editModal.show=false">取消</button>
+              <button class="btn btn-primary" @click="confirmEditExercise">确认</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `,
+    setup() {
+      const router = VueRouter.useRouter();
+      const allExercises = ref(loadAllExercises());
+      const form = reactive({
+        date: new Date().toISOString().split('T')[0],
+        exercises: []
+      });
+
+      const editModal = reactive({ show: false, oldName: '', newName: '', exerciseIdx: -1 });
+
+      function addExercise() {
+        if (form.exercises.length >= 10) return;
+        form.exercises.push({
+          name: '', searchText: '', showDropdown: false, sets: 3, reps: 12, unit: '次', status: null
+        });
+      }
+      function removeExercise(idx) { form.exercises.splice(idx, 1); }
+
+      function openDropdown(idx) {
+        form.exercises.forEach((e, i) => { e.showDropdown = (i === idx); });
+      }
+      function onBlur(idx) {
+        setTimeout(() => { if (form.exercises[idx]) form.exercises[idx].showDropdown = false; }, 200);
+      }
+      function onSearchInput(ex, idx) {
+        ex.showDropdown = true;
+      }
+
+      function getFilteredExercises(idx) {
+        const search = (form.exercises[idx]?.searchText || '').trim().toLowerCase();
+        if (!search) return allExercises.value;
+        return allExercises.value.filter(n => n.toLowerCase().includes(search));
+      }
+
+      function selectExercise(idx, name) {
+        const ex = form.exercises[idx];
+        ex.name = name;
+        ex.searchText = name;
+        ex.showDropdown = false;
+      }
+
+      function addCustomExercise(idx) {
+        const ex = form.exercises[idx];
+        const newName = ex.searchText.trim();
+        if (!newName) return;
+        // 添加到动作库
+        if (!allExercises.value.includes(newName)) {
+          allExercises.value.push(newName);
+          saveAllExercises(allExercises.value);
+        }
+        ex.name = newName;
+        ex.showDropdown = false;
+      }
+
+      function deleteExerciseOption(idx, name, event) {
+        event.stopPropagation();
+        allExercises.value = allExercises.value.filter(n => n !== name);
+        saveAllExercises(allExercises.value);
+        // 如果当前选中了这个动作，清空
+        if (form.exercises[idx].name === name) {
+          form.exercises[idx].name = '';
+          form.exercises[idx].searchText = '';
+        }
+      }
+
+      function startEditExercise(idx, name, event) {
+        event.stopPropagation();
+        editModal.show = true;
+        editModal.oldName = name;
+        editModal.newName = name;
+        editModal.exerciseIdx = idx;
+      }
+
+      function confirmEditExercise() {
+        const oldN = editModal.oldName;
+        const newN = editModal.newName.trim();
+        if (!newN || newN === oldN) { editModal.show = false; return; }
+        // 更新动作库
+        const i = allExercises.value.indexOf(oldN);
+        if (i !== -1) { allExercises.value[i] = newN; saveAllExercises(allExercises.value); }
+        // 更新表单中引用该动作的项
+        form.exercises.forEach(ex => {
+          if (ex.name === oldN) { ex.name = newN; ex.searchText = newN; }
+        });
+        editModal.show = false;
+      }
+
+      const canSubmit = computed(() => {
+        return form.date && form.exercises.length > 0 && form.exercises.every(e => e.name && e.sets > 0 && e.reps > 0);
+      });
+
+      function submitPlan() {
+        if (!canSubmit.value) return;
+        const data = loadData();
+        const plan = {
+          id: genId(), date: form.date, title: form.date,
+          exercises: form.exercises.map(e => ({ name: e.name, sets: e.sets, reps: e.reps, unit: e.unit, status: null })),
+          completed: false
+        };
+        data.pendingPlans.push(plan);
+        saveData(data);
+        form.exercises = [];
+        form.date = new Date().toISOString().split('T')[0];
+        router.push('/pending');
+      }
+
+      // 支持从其他页面传入预填数据（复制计划）
+      const route = VueRouter.useRoute();
+      onMounted(() => {
+        if (route.query.copyData) {
+          try {
+            const src = JSON.parse(decodeURIComponent(route.query.copyData));
+            form.date = src.date || new Date().toISOString().split('T')[0];
+            form.exercises = (src.exercises || []).map(e => ({
+              name: e.name, searchText: e.name, showDropdown: false,
+              sets: e.sets, reps: e.reps, unit: e.unit, status: null
+            }));
+          } catch(err) {}
+        }
+      });
+
+      return {
+        form, allExercises, editModal,
+        addExercise, removeExercise, openDropdown, onBlur, onSearchInput,
+        getFilteredExercises, selectExercise, addCustomExercise,
+        deleteExerciseOption, startEditExercise, confirmEditExercise,
+        canSubmit, submitPlan
+      };
+    }
+  };
+
+  // ==================== 待健项目列表页 ====================
+  const PendingListPage = {
+    template: `
+      <div class="fade-in">
+        <div class="nav-bar">
+          <button class="back-btn" @click="$router.push('/entry')"><i class="fas fa-arrow-left"></i></button>
+          <span class="nav-title">待健项目</span>
+        </div>
+        <div class="page">
+          <div v-if="plans.length === 0" class="empty-state">
+            <i class="fas fa-clipboard-list"></i>
+            <p>暂无待健项目<br>去创建新训练计划吧</p>
+          </div>
+          <div v-for="plan in plans" :key="plan.id" class="plan-card">
+            <div class="plan-card-left" @click="$router.push('/pending/' + plan.id)">
+              <div class="plan-card-date"><i class="fas fa-calendar-day" style="margin-right:6px;color:var(--accent);"></i>{{plan.title}}</div>
+              <div class="plan-card-count">{{plan.exercises.length}} 个训练组</div>
+            </div>
+            <div class="plan-card-right">
+              <button class="plan-card-icon-btn copy" @click.stop="openCopyPlan(plan)" title="复制计划"><i class="fas fa-copy"></i></button>
+              <button class="plan-card-icon-btn del" @click.stop="confirmDelete(plan)" title="删除"><i class="fas fa-trash-alt"></i></button>
+              <span class="badge badge-muted" @click="$router.push('/pending/' + plan.id)">{{getProgress(plan)}}</span>
+              <i class="fas fa-chevron-right plan-card-arrow" @click="$router.push('/pending/' + plan.id)"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- 删除确认弹窗 -->
+        <div v-if="showDeleteConfirm" class="confirm-overlay" @click.self="showDeleteConfirm=false">
+          <div class="confirm-box">
+            <div class="confirm-title">确认删除此训练计划？</div>
+            <p style="font-size:14px;color:var(--text-secondary);">删除后无法恢复。</p>
+            <div class="confirm-actions">
+              <button class="btn btn-secondary" @click="showDeleteConfirm=false">取消</button>
+              <button class="btn btn-primary" @click="deletePlan">删除</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 复制计划弹窗 -->
+        <div v-if="showCopyModal" class="copy-plan-overlay" @click.self="showCopyModal=false">
+          <div class="copy-plan-box">
+            <h3><i class="fas fa-copy" style="margin-right:6px;color:var(--success);"></i>复制训练计划</h3>
+            <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;">复制 {{copySource?.title}} 的训练内容到新日期</p>
+            <div class="form-group">
+              <label class="form-label">选择新日期</label>
+              <input type="date" class="form-input" v-model="copyDate">
+            </div>
+            <div class="copy-plan-actions">
+              <button class="btn btn-secondary" @click="showCopyModal=false">取消</button>
+              <button class="btn btn-success" @click="doCopyPlan" :class="{'btn-disabled': !copyDate}">复制</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `,
+    setup() {
+      const router = VueRouter.useRouter();
+      const plans = ref([]);
+      const showDeleteConfirm = ref(false);
+      const deleteTargetId = ref('');
+      const showCopyModal = ref(false);
+      const copySource = ref(null);
+      const copyDate = ref('');
+
+      function refresh() {
+        const data = loadData();
+        plans.value = data.pendingPlans;
+      }
+      function getProgress(plan) {
+        const done = plan.exercises.filter(e => e.status).length;
+        return done + '/' + plan.exercises.length;
+      }
+      function confirmDelete(plan) {
+        deleteTargetId.value = plan.id;
+        showDeleteConfirm.value = true;
+      }
+      function deletePlan() {
+        showDeleteConfirm.value = false;
+        const data = loadData();
+        data.pendingPlans = data.pendingPlans.filter(p => p.id !== deleteTargetId.value);
+        saveData(data);
+        refresh();
+      }
+      function openCopyPlan(plan) {
+        copySource.value = plan;
+        copyDate.value = new Date().toISOString().split('T')[0];
+        showCopyModal.value = true;
+      }
+      function doCopyPlan() {
+        if (!copyDate.value || !copySource.value) return;
+        const data = loadData();
+        const newPlan = {
+          id: genId(),
+          date: copyDate.value,
+          title: copyDate.value,
+          exercises: copySource.value.exercises.map(e => ({ ...e, status: null })),
+          completed: false
+        };
+        data.pendingPlans.push(newPlan);
+        saveData(data);
+        showCopyModal.value = false;
+        refresh();
+      }
+      onMounted(refresh);
+      return { plans, getProgress, showDeleteConfirm, confirmDelete, deletePlan, showCopyModal, copySource, copyDate, openCopyPlan, doCopyPlan };
+    }
+  };
+
+  // ==================== 训练详情页 ====================
+  const PendingDetailPage = {
+    template: `
+      <div class="fade-in">
+        <div class="nav-bar">
+          <button class="back-btn" @click="$router.push('/pending')"><i class="fas fa-arrow-left"></i></button>
+          <span class="nav-title">{{plan ? plan.title : '训练详情'}}</span>
+          <button v-if="plan" class="nav-action" @click="openCopyPlan"><i class="fas fa-copy"></i> 复制</button>
+        </div>
+        <div class="page" style="padding-bottom:140px;">
+          <div v-if="!plan" class="empty-state"><p>未找到该训练计划</p></div>
+          <template v-if="plan">
+            <div class="card" style="margin-bottom:16px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:13px;color:var(--text-secondary);">训练进度</span>
+                <span style="font-size:13px;color:var(--accent);font-weight:600;">{{doneCount}}/{{plan.exercises.length}}</span>
+              </div>
+              <div style="height:6px;background:rgba(255,255,255,0.06);border-radius:3px;margin-top:8px;overflow:hidden;">
+                <div :style="{width: progressPercent+'%', height:'100%', background:'linear-gradient(90deg,var(--accent),var(--accent-light))', borderRadius:'3px', transition:'width 0.3s'}"></div>
+              </div>
+            </div>
+
+            <div v-for="(ex, idx) in plan.exercises" :key="idx"
+              class="exercise-item" :class="{'done': ex.status==='✓', 'skipped': ex.status==='✗'}">
+              <div class="exercise-info">
+                <div class="exercise-name">{{ex.name}}</div>
+                <div class="exercise-detail">{{ex.sets}}组 × {{ex.reps}}{{ex.unit}}</div>
+              </div>
+              <div class="exercise-actions">
+                <button class="exercise-btn btn-check" :class="{'active': ex.status==='✓'}" @click="markExercise(idx, '✓')"><i class="fas fa-check"></i></button>
+                <button class="exercise-btn btn-cross" :class="{'active': ex.status==='✗'}" @click="markExercise(idx, '✗')"><i class="fas fa-times"></i></button>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <template v-if="plan">
+          <div class="timer-bar" style="padding-bottom:12px;">
+            <button class="timer-btn" @click="startTimer(30)"><i class="fas fa-stopwatch"></i> 30秒</button>
+            <button class="timer-btn" @click="startTimer(45)"><i class="fas fa-stopwatch"></i> 45秒</button>
+            <button class="timer-btn" @click="startTimer(60)"><i class="fas fa-stopwatch"></i> 60秒</button>
+          </div>
+          <div style="position:fixed;bottom:68px;left:0;right:0;padding:8px 16px;background:var(--bg-secondary);z-index:50;border-top:1px solid var(--border);">
+            <button class="btn btn-success btn-block" @click="confirmComplete" :class="{'btn-disabled': !allMarked}">
+              <i class="fas fa-flag-checkered"></i> 完成训练
+            </button>
+          </div>
+        </template>
+
+        <div v-if="timerActive" class="timer-overlay">
+          <div class="timer-circle">
+            <svg width="240" height="240" viewBox="0 0 240 240">
+              <circle class="bg-ring" cx="120" cy="120" r="108"></circle>
+              <circle class="progress-ring" cx="120" cy="120" r="108"
+                :stroke-dasharray="circumference" :stroke-dashoffset="timerOffset"></circle>
+            </svg>
+            <div class="timer-number">{{timerDisplay}}</div>
+          </div>
+          <div class="timer-label">休息倒计时</div>
+          <button class="timer-cancel-btn" @click="cancelTimer">取消</button>
+        </div>
+
+        <div v-if="timerDone" class="modal-overlay" @click.self="timerDone=false">
+          <div class="modal-box">
+            <div class="modal-icon"><i class="fas fa-bell"></i></div>
+            <div class="modal-title">时间到！</div>
+            <div class="modal-desc">休息结束，继续训练吧 💪</div>
+            <button class="btn btn-primary btn-block" @click="timerDone=false">好的</button>
+          </div>
+        </div>
+
+        <div v-if="showConfirm" class="confirm-overlay" @click.self="showConfirm=false">
+          <div class="confirm-box">
+            <div class="confirm-title">确认完成训练？</div>
+            <p style="font-size:14px;color:var(--text-secondary);">完成后训练记录将转入历史，无法再修改。</p>
+            <div class="confirm-actions">
+              <button class="btn btn-secondary" @click="showConfirm=false">取消</button>
+              <button class="btn btn-success" @click="completePlan">确认</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 复制计划弹窗 -->
+        <div v-if="showCopyModal" class="copy-plan-overlay" @click.self="showCopyModal=false">
+          <div class="copy-plan-box">
+            <h3><i class="fas fa-copy" style="margin-right:6px;color:var(--success);"></i>复制训练计划</h3>
+            <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;">复制当前训练内容到新日期</p>
+            <div class="form-group">
+              <label class="form-label">选择新日期</label>
+              <input type="date" class="form-input" v-model="copyDate">
+            </div>
+            <div class="copy-plan-actions">
+              <button class="btn btn-secondary" @click="showCopyModal=false">取消</button>
+              <button class="btn btn-success" @click="doCopyPlan" :class="{'btn-disabled': !copyDate}">复制</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `,
+    setup() {
+      const route = VueRouter.useRoute();
+      const router = VueRouter.useRouter();
+      const plan = ref(null);
+
+      function refresh() {
+        const data = loadData();
+        plan.value = data.pendingPlans.find(p => p.id === route.params.id) || null;
+      }
+
+      const doneCount = computed(() => {
+        if (!plan.value) return 0;
+        return plan.value.exercises.filter(e => e.status).length;
+      });
+      const progressPercent = computed(() => {
+        if (!plan.value || plan.value.exercises.length === 0) return 0;
+        return Math.round(doneCount.value / plan.value.exercises.length * 100);
+      });
+      const allMarked = computed(() => {
+        if (!plan.value) return false;
+        return plan.value.exercises.length > 0 && plan.value.exercises.every(e => e.status);
+      });
+
+      function markExercise(idx, status) {
+        if (!plan.value) return;
+        const ex = plan.value.exercises[idx];
+        ex.status = ex.status === status ? null : status;
+        const data = loadData();
+        const p = data.pendingPlans.find(p => p.id === plan.value.id);
+        if (p) { p.exercises[idx].status = ex.status; saveData(data); }
+      }
+
+      // 倒计时
+      const timerActive = ref(false);
+      const timerDone = ref(false);
+      const timerTotal = ref(0);
+      const timerLeft = ref(0);
+      const timerInterval = ref(null);
+      const circumference = 2 * Math.PI * 108;
+      const timerDisplay = computed(() => Math.ceil(timerLeft.value / 1000));
+      const timerOffset = computed(() => {
+        if (timerTotal.value === 0) return 0;
+        return circumference * (1 - timerLeft.value / timerTotal.value);
+      });
+
+      function startTimer(seconds) {
+        timerActive.value = true; timerDone.value = false;
+        timerTotal.value = seconds * 1000; timerLeft.value = seconds * 1000;
+        const start = Date.now();
+        timerInterval.value = setInterval(() => {
+          timerLeft.value = Math.max(0, timerTotal.value - (Date.now() - start));
+          if (timerLeft.value <= 0) { clearInterval(timerInterval.value); timerActive.value = false; timerDone.value = true; }
+        }, 50);
+      }
+      function cancelTimer() { clearInterval(timerInterval.value); timerActive.value = false; }
+
+      // 完成训练
+      const showConfirm = ref(false);
+      function confirmComplete() { if (allMarked.value) showConfirm.value = true; }
+      function completePlan() {
+        showConfirm.value = false;
+        const data = loadData();
+        const idx = data.pendingPlans.findIndex(p => p.id === plan.value.id);
+        if (idx !== -1) {
+          const completed = data.pendingPlans.splice(idx, 1)[0];
+          completed.completed = true; completed.completedAt = new Date().toISOString();
+          data.history.push(completed); saveData(data); router.push('/pending');
+        }
+      }
+
+      // 复制计划
+      const showCopyModal = ref(false);
+      const copyDate = ref('');
+      function openCopyPlan() {
+        copyDate.value = new Date().toISOString().split('T')[0];
+        showCopyModal.value = true;
+      }
+      function doCopyPlan() {
+        if (!copyDate.value || !plan.value) return;
+        const data = loadData();
+        const newPlan = {
+          id: genId(), date: copyDate.value, title: copyDate.value,
+          exercises: plan.value.exercises.map(e => ({ ...e, status: null })),
+          completed: false
+        };
+        data.pendingPlans.push(newPlan); saveData(data);
+        showCopyModal.value = false; router.push('/pending');
+      }
+
+      onMounted(refresh);
+      onUnmounted(() => { if (timerInterval.value) clearInterval(timerInterval.value); });
+
+      return {
+        plan, doneCount, progressPercent, allMarked, markExercise,
+        timerActive, timerDone, timerDisplay, timerOffset, circumference,
+        startTimer, cancelTimer,
+        showConfirm, confirmComplete, completePlan,
+        showCopyModal, copyDate, openCopyPlan, doCopyPlan
+      };
+    }
+  };
+
+  // ==================== 统计页 ====================
+  const StatsPage = {
+    template: `
+      <div class="fade-in">
+        <div class="nav-bar">
+          <button class="back-btn" @click="$router.push('/entry')"><i class="fas fa-arrow-left"></i></button>
+          <span class="nav-title">训练统计</span>
+        </div>
+        <div class="page">
+          <div class="card">
+            <div class="stats-date-range">
+              <input type="date" class="form-input" v-model="startDate">
+              <span>至</span>
+              <input type="date" class="form-input" v-model="endDate">
+            </div>
+            <button class="btn btn-primary btn-block btn-sm" @click="loadStats"><i class="fas fa-search"></i> 查询</button>
+          </div>
+
+          <div v-if="statsLoaded" style="margin-top:8px;">
+            <div class="stats-summary">
+              <div><div class="stats-num accent">{{totalSessions}}</div><div class="stats-label">训练次数</div></div>
+              <div><div class="stats-num">{{totalExercises}}</div><div class="stats-label">训练组数</div></div>
+              <div><div class="stats-num green">{{completionRate}}%</div><div class="stats-label">完成率</div></div>
+            </div>
+            <div v-if="totalSessions > 0" class="chart-container"><canvas id="statsChart" height="200"></canvas></div>
+
+            <div id="captureArea" class="capture-area">
+              <div class="capture-header"><h2>FitLog 训练统计</h2><p>{{startDate}} ~ {{endDate}}</p></div>
+              <div class="stats-summary" style="margin-bottom:16px;">
+                <div><div class="stats-num accent">{{totalSessions}}</div><div class="stats-label">训练次数</div></div>
+                <div><div class="stats-num">{{totalExercises}}</div><div class="stats-label">训练组数</div></div>
+                <div><div class="stats-num green">{{completionRate}}%</div><div class="stats-label">完成率</div></div>
+              </div>
+              <div v-for="day in dayGroups" :key="day.date" class="stats-day-group">
+                <div class="stats-day-header"><i class="fas fa-calendar-day" style="margin-right:6px;"></i>{{day.date}}</div>
+                <div v-for="(ex, i) in day.exercises" :key="i" class="exercise-item" style="margin-bottom:6px;"
+                  :class="{'done': ex.status==='✓', 'skipped': ex.status==='✗'}">
+                  <div class="exercise-info">
+                    <div class="exercise-name" style="font-size:14px;">{{ex.name}}</div>
+                    <div class="exercise-detail">{{ex.sets}}组 × {{ex.reps}}{{ex.unit}}</div>
+                  </div>
+                  <span v-if="ex.status==='✓'" class="badge badge-success">完成</span>
+                  <span v-else class="badge badge-danger">跳过</span>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="totalSessions === 0" class="empty-state" style="padding:24px;"><p>该时间段暂无训练记录</p></div>
+            <div v-if="totalSessions > 0" style="margin-top:12px;">
+              <button class="btn btn-primary btn-block" @click="generateImage" :class="{'btn-disabled': generating}">
+                <i class="fas fa-image"></i> {{generating ? '生成中...' : '生成长图'}}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `,
+    setup() {
+      const startDate = ref('');
+      const endDate = ref('');
+      const statsLoaded = ref(false);
+      const generating = ref(false);
+      const dayGroups = ref([]);
+      const totalSessions = ref(0);
+      const totalExercises = ref(0);
+      const completionRate = ref(0);
+      let chartInstance = null;
+
+      onMounted(() => {
+        const now = new Date();
+        const ago = new Date(now); ago.setDate(ago.getDate() - 30);
+        startDate.value = ago.toISOString().split('T')[0];
+        endDate.value = now.toISOString().split('T')[0];
+      });
+
+      function loadStats() {
+        if (!startDate.value || !endDate.value) return;
+        const data = loadData();
+        const filtered = data.history.filter(r => r.date >= startDate.value && r.date <= endDate.value);
+        filtered.sort((a, b) => a.date.localeCompare(b.date));
+        totalSessions.value = filtered.length;
+        totalExercises.value = filtered.reduce((s, r) => s + r.exercises.length, 0);
+        const doneC = filtered.reduce((s, r) => s + r.exercises.filter(e => e.status === '✓').length, 0);
+        const totalC = filtered.reduce((s, r) => s + r.exercises.length, 0);
+        completionRate.value = totalC > 0 ? Math.round(doneC / totalC * 100) : 0;
+        const groups = {};
+        filtered.forEach(r => {
+          if (!groups[r.date]) groups[r.date] = { date: r.date, exercises: [] };
+          r.exercises.forEach(e => groups[r.date].exercises.push({ ...e }));
+        });
+        dayGroups.value = Object.values(groups);
+        statsLoaded.value = true;
+        nextTick(() => drawChart(filtered));
+      }
+
+      function drawChart(records) {
+        const canvas = document.getElementById('statsChart');
+        if (!canvas) return;
+        if (chartInstance) chartInstance.destroy();
+        const dateMap = {};
+        records.forEach(r => { dateMap[r.date] = (dateMap[r.date] || 0) + r.exercises.length; });
+        const labels = Object.keys(dateMap).sort();
+        const values = labels.map(d => dateMap[d]);
+        chartInstance = new Chart(canvas, {
+          type: 'bar',
+          data: { labels: labels.map(d => d.slice(5)), datasets: [{ label: '训练组数', data: values, backgroundColor: 'rgba(233,69,96,0.6)', borderColor: '#e94560', borderWidth: 1, borderRadius: 6 }] },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { ticks: { color: '#a0a0b8', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+              y: { beginAtZero: true, ticks: { color: '#a0a0b8', stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.04)' } }
+            }
+          }
+        });
+      }
+
+      async function generateImage() {
+        generating.value = true;
+        try {
+          const area = document.getElementById('captureArea');
+          const canvas = await html2canvas(area, { backgroundColor: '#1a1a2e', scale: 2, useCORS: true });
+          const link = document.createElement('a');
+          link.download = 'FitLog训练统计_' + startDate.value + '_' + endDate.value + '.png';
+          link.href = canvas.toDataURL('image/png');
+          link.click();
+        } catch(e) { alert('生成长图失败：' + e.message); }
+        generating.value = false;
+      }
+
+      return { startDate, endDate, statsLoaded, generating, dayGroups, totalSessions, totalExercises, completionRate, loadStats, generateImage };
+    }
+  };
+
+  // ==================== 路由 ====================
+  const routes = [
+    { path: '/', component: HomePage },
+    { path: '/entry', component: EntryPage },
+    { path: '/new', component: NewPlanPage },
+    { path: '/pending', component: PendingListPage },
+    { path: '/pending/:id', component: PendingDetailPage },
+    { path: '/stats', component: StatsPage },
+  ];
+
+  const router = createRouter({ history: createWebHashHistory(), routes });
+  const app = createApp({});
+  app.use(router);
+  app.mount('#app');
+  </script>
+</body>
+</html>
